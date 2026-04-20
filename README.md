@@ -5,6 +5,7 @@
 [![Version](https://img.shields.io/badge/version-2.2.0-brightgreen.svg)](CHANGELOG.md)
 [![Headphones](https://img.shields.io/badge/service-Headphones-blue.svg)](https://github.com/rembo10/headphones)
 [![Lidarr](https://img.shields.io/badge/service-Lidarr-orange.svg)](https://github.com/Lidarr/Lidarr)
+[![Docker](https://img.shields.io/badge/docker-lumalux%2Fgenrediscovery-blue.svg)](https://hub.docker.com/r/lumalux/genrediscovery)
 
 🎵 **Modern music discovery tool** that integrates Last.fm, MusicBrainz, Navidrome, and both Headphones & Lidarr to automatically discover and queue new albums based on your listening history.
 

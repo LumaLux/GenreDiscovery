@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-04-20
+
+### 🎵 Genre-aware discovery
+- Artists are grouped by Last.fm genre tags before finding similar artists, so each genre gets its own discovery pool
+- Configurable `GENRE_BUCKETS` map raw Last.fm tags to broad genres (metal, electronic, rock, …); set to `{}` to use raw tags directly
+- Fallback to `tag.getTopArtists` when no similar artists are found for a genre
+- New config: `GENRE_DISCOVERY_ENABLED`, `GENRE_SCROBBLE_PERIOD`, `GENRE_TOP_ARTISTS_LIMIT`, `GENRE_TOP_N`, `GENRE_SIMILAR_LIMIT`
+
+### ❤️ Loved / Starred tracks phase
+- New Phase 1 runs before discovery and ensures all loved/starred artists are in the music service
+- Fetches the specific albums that each loved track appears on (via `track.getInfo`) and adds those directly
+- Navidrome `getStarred2` starred albums are also added in this phase
+- New config: `LOVED_TRACKS_ENABLED`, `LOVED_TRACKS_LIMIT`
+
+### 🎛️ Navidrome / Subsonic integration
+- Optional pull of starred artists and starred albums from Navidrome
+- New config: `NAVIDROME_ENABLED`, `NAVIDROME_ENDPOINT`, `NAVIDROME_USERS`
+
+### 👥 Multi-account support
+- `LASTFM_USERS` replaces `LASTFM_USERNAME` — accepts a list; scrobbles, loved tracks and top artists are merged across all accounts
+- `NAVIDROME_USERS` replaces `NAVIDROME_USERNAME`/`NAVIDROME_PASSWORD` — list of `{username, password}` dicts; starred data merged across accounts
+
+### 🔁 Daemon mode & scheduler
+- `--daemon` keeps the script running: runs discovery immediately on startup, then on a configurable schedule
+- `SCHEDULE_MODE`: `"daily"` / `"weekly"` / `"monthly"` / `"manual"`
+- `--trigger` writes a trigger file that the running daemon picks up for an immediate run (Docker-friendly)
+- `--next-run` shows when the next scheduled run would be
+- New config: `SCHEDULE_MODE`, `SCHEDULE_HOUR`, `SCHEDULE_DAY_OF_WEEK`, `SCHEDULE_DAY_OF_MONTH`
+
+### 🧪 DRY_RUN mode
+- `DRY_RUN = True` logs all actions without making any changes to the music service
+- Clean human-readable report written to `log/dry_run.log` (no connection noise, only what would be added)
+- Section banners and summary written to the dry-run report
+
+### ⚡ Performance
+- **Lidarr request caching**: artist list, known album MBIDs, and Lidarr album IDs cached in-memory; eliminates redundant `GET /artist` and `GET /album` calls within a single run
+- **MusicBrainz single-call optimisation**: `release/{id}?inc=release-groups` already contains the full release group object, so the second `GET /release-group/{id}` call is eliminated — per-album MBZ wait halved from 2.2 s to 1.1 s
+
+### 🏗️ Modular source layer
+- `sources/lastfm.py` — all Last.fm API logic extracted from the main script
+- `sources/navidrome.py` — Navidrome/Subsonic client
+- `sources/__init__.py` — re-exports everything for clean imports
+
+### 🐳 Docker & deployment
+- `Dockerfile` and `docker-compose.yml` for containerised deployment
+- GitHub Actions workflow (`.github/workflows/docker-publish.yml`) — builds and pushes to Docker Hub on every push to `main`
+- Unraid Community Applications XML template (`unraid/GenreDiscovery.xml`)
+
+### 🔒 Security
+- `config.py` added to `.gitignore` — credentials no longer risk being committed
+- `trigger.run` also excluded from git
+
+### 📝 Files added / modified
+- **Added**: `sources/lastfm.py`, `sources/navidrome.py`, `sources/__init__.py`
+- **Added**: `Dockerfile`, `docker-compose.yml`, `requirements.txt`
+- **Added**: `.github/workflows/docker-publish.yml`
+- **Added**: `unraid/GenreDiscovery.xml`
+- **Added**: `.gitignore`
+- **Modified**: `DiscoveryLastFM.py` — genre sync, loved phase, daemon, DRY_RUN, MBZ optimisation, English logging
+- **Modified**: `services/lidarr.py` — in-memory caching
+- **Modified**: `config.example.py` — new configuration options
+- **Modified**: `README.md` — full rewrite for v2.2
+
+---
+
 ## [2.1.1] - 2025-11-13
 
 ### 🐛 Bug Fixes
