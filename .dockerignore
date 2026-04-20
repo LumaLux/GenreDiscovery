@@ -1,0 +1,13 @@
+config.py
+lastfm_similar_cache.json
+log/
+trigger.run
+*.log
+*.tmp
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.idea/
+.vscode/
+.git/
