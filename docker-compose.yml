@@ -1,0 +1,9 @@
+services:
+  genrediscovery:
+    image: lumalux/genrediscovery:latest
+    container_name: genrediscovery
+    restart: unless-stopped
+    volumes:
+      - ./config.py:/app/config.py:ro
+      - ./lastfm_similar_cache.json:/app/lastfm_similar_cache.json
+      - ./log:/app/log

@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>GenreDiscovery</Name>
+  <Repository>lumalux/genrediscovery:latest</Repository>
+  <Registry>https://hub.docker.com/r/lumalux/genrediscovery</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/LumaLux/GenreDiscovery</Support>
+  <Project>https://github.com/LumaLux/GenreDiscovery</Project>
+  <Overview>
+    Genre-aware music discovery: groups your Last.fm top artists by genre, finds similar artists, and automatically adds them plus their studio albums to Lidarr or Headphones. Supports multiple Last.fm and Navidrome accounts. Runs on a configurable schedule (daily/weekly/monthly) or on manual trigger.
+  </Overview>
+  <Category>Music:</Category>
+  <WebUI/>
+  <TemplateURL>https://raw.githubusercontent.com/LumaLux/GenreDiscovery/main/unraid/GenreDiscovery.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/LumaLux/GenreDiscovery/main/unraid/icon.png</Icon>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+
+  <!-- Config file -->
+  <Config Name="Config file" Target="/app/config.py" Default="/mnt/user/appdata/genrediscovery/config.py"
+          Mode="ro" Description="Path to your config.py (copy from config.example.py)" Type="Path" Display="always" Required="true" Mask="false"/>
+
+  <!-- Persistent cache -->
+  <Config Name="Cache file" Target="/app/lastfm_similar_cache.json" Default="/mnt/user/appdata/genrediscovery/lastfm_similar_cache.json"
+          Mode="rw" Description="Persistent cache to avoid re-adding albums" Type="Path" Display="always" Required="true" Mask="false"/>
+
+  <!-- Logs -->
+  <Config Name="Log directory" Target="/app/log" Default="/mnt/user/appdata/genrediscovery/log"
+          Mode="rw" Description="Directory for discover.log and dry_run.log" Type="Path" Display="always" Required="true" Mask="false"/>
+
+</Container>

@@ -1,0 +1,20 @@
+# Local config — contains credentials, never commit
+config.py
+
+# Runtime artifacts
+log/
+*.log
+lastfm_similar_cache.json
+trigger.run
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
