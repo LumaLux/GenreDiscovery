@@ -153,6 +153,10 @@ LOVED_TRACKS_ENABLED = True
 # Max loved tracks to fetch from Last.fm (pagination handled automatically)
 LOVED_TRACKS_LIMIT = 500
 
+# Only add studio albums for loved tracks (filters out singles, EPs, live albums, etc.)
+# Set to False to also add non-studio releases when they contain a loved track.
+LOVED_STUDIO_ONLY = True
+
 
 # =================================================================
 # === NAVIDROME INTEGRATION (NEW in v2.2, optional) ===
