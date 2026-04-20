@@ -19,7 +19,6 @@ class LidarrService(MusicServiceBase):
     
     def __init__(self, config):
         super().__init__(config)
-        # Performance metrics tracking
         self.operation_stats = {
             "total_requests": 0,
             "total_time": 0,
@@ -28,6 +27,10 @@ class LidarrService(MusicServiceBase):
             "slow_operations": 0,
             "server_unavailable_503": 0
         }
+        # In-memory caches to minimise repeated GET requests within a single run
+        self._artist_list_cache: Optional[list] = None      # full GET /artist response
+        self._known_album_mbids: Optional[set] = None       # all foreignAlbumIds in library
+        self._lidarr_album_id: dict = {}                    # foreignAlbumId -> lidarr internal id
     
     def _validate_config(self) -> None:
         """Validazione configurazione Lidarr"""
@@ -236,6 +239,7 @@ class LidarrService(MusicServiceBase):
             result = self._lidarr_request("POST", "artist", json=payload)
             if result:
                 log.info(f"Added artist {artist_info.name} to Lidarr")
+                self._invalidate_artist_cache()
                 return True
             return False
             
@@ -243,14 +247,20 @@ class LidarrService(MusicServiceBase):
             log.error(f"Failed to add artist {artist_info.name}: {e}")
             return False
     
+    def _get_artist_list(self) -> list:
+        """Return the full Lidarr artist list, fetching once per run."""
+        if self._artist_list_cache is None:
+            self._artist_list_cache = self._lidarr_request("GET", "artist") or []
+            log.debug(f"Artist list cached ({len(self._artist_list_cache)} artists)")
+        return self._artist_list_cache
+
+    def _invalidate_artist_cache(self) -> None:
+        self._artist_list_cache = None
+
     def get_artist(self, mbid: str) -> Optional[ArtistInfo]:
-        """Recupera info artista se esiste in Lidarr"""
+        """Look up an artist by MBID using the cached artist list."""
         try:
-            artists = self._lidarr_request("GET", "artist")
-            if not artists:
-                return None
-                
-            for artist in artists:
+            for artist in self._get_artist_list():
                 if artist.get("foreignArtistId") == mbid:
                     return ArtistInfo(
                         mbid=mbid,
@@ -282,35 +292,27 @@ class LidarrService(MusicServiceBase):
             return False
     
     def add_album(self, album_info: AlbumInfo) -> bool:
-        """Aggiunge album alla libreria Lidarr"""
+        """Add an album to the Lidarr library."""
         try:
-            # Cerca album esistente
             artist = self.get_artist(album_info.artist_mbid)
             if not artist:
                 log.error(f"Artist not found for album {album_info.title}")
                 return False
-            
-            # Check if album already exists
-            albums = self._lidarr_request("GET", "album", params={"artistId": artist.service_id})
-            if albums:
-                for album in albums:
-                    if album.get("foreignAlbumId") == album_info.mbid:
-                        log.debug(f"Album {album_info.title} already exists")
-                        return True
-            
-            # Lookup album in Lidarr DB
+
+            # album_exists() is called by the caller before add_album, but guard here too
+            if album_info.mbid in self._get_known_album_mbids():
+                log.debug(f"Album {album_info.title} already exists")
+                return True
+
             search_results = self._lidarr_request(
                 "GET", "album/lookup",
                 params={"term": f"mbid:{album_info.mbid}"}
             )
-            
             if not search_results:
                 log.warning(f"Album {album_info.title} not found in Lidarr database")
                 return False
-            
+
             album_data = search_results[0]
-            
-            # Payload album
             payload = {
                 "foreignAlbumId": album_info.mbid,
                 "artistId": int(artist.service_id),
@@ -319,56 +321,55 @@ class LidarrService(MusicServiceBase):
                     "searchForNewAlbum": self.config.get("LIDARR_SEARCH_ON_ADD", True)
                 }
             }
-            
-            # Merge con dati Lidarr
             payload.update({
                 k: v for k, v in album_data.items()
                 if k in ["title", "releaseDate", "images", "links", "genres", "disambiguation", "artist", "releases"]
             })
-            
+
             result = self._lidarr_request("POST", "album", json=payload)
             if result:
                 log.info(f"Added album {album_info.title} to Lidarr")
+                # Update caches so queue_album and album_exists need no extra GETs
+                lidarr_id = result.get("id")
+                if lidarr_id:
+                    self._lidarr_album_id[album_info.mbid] = lidarr_id
+                if self._known_album_mbids is not None:
+                    self._known_album_mbids.add(album_info.mbid)
                 return True
             return False
-            
+
         except Exception as e:
             log.error(f"Failed to add album {album_info.title}: {e}")
             return False
     
     def queue_album(self, album_info: AlbumInfo, force_new: bool = False) -> bool:
-        """Accoda album per download in Lidarr"""
+        """Queue an album for download in Lidarr."""
         try:
-            # Find album in Lidarr
-            artist = self.get_artist(album_info.artist_mbid)
-            if not artist:
-                log.error(f"Artist not found for album {album_info.title}")
-                return False
-            
-            albums = self._lidarr_request("GET", "album", params={"artistId": artist.service_id})
-            target_album = None
-            if albums:
-                for album in albums:
-                    if album.get("foreignAlbumId") == album_info.mbid:
-                        target_album = album
-                        break
-            
-            if not target_album:
+            # Use cached Lidarr album ID if available; fall back to a GET only if needed
+            lidarr_id = self._lidarr_album_id.get(album_info.mbid)
+            if lidarr_id is None:
+                artist = self.get_artist(album_info.artist_mbid)
+                if not artist:
+                    log.error(f"Artist not found for album {album_info.title}")
+                    return False
+                albums = self._lidarr_request("GET", "album", params={"artistId": artist.service_id})
+                if albums:
+                    for album in albums:
+                        if album.get("foreignAlbumId") == album_info.mbid:
+                            lidarr_id = album["id"]
+                            self._lidarr_album_id[album_info.mbid] = lidarr_id
+                            break
+
+            if lidarr_id is None:
                 log.warning(f"Album {album_info.title} not found in library")
                 return False
-            
-            # Trigger search
-            command_payload = {
-                "name": "AlbumSearch",
-                "albumIds": [target_album["id"]]
-            }
-            
-            result = self._lidarr_request("POST", "command", json=command_payload)
+
+            result = self._lidarr_request("POST", "command", json={"name": "AlbumSearch", "albumIds": [lidarr_id]})
             if result:
                 log.info(f"Queued album {album_info.title} for search")
                 return True
             return False
-            
+
         except Exception as e:
             log.error(f"Failed to queue album {album_info.title}: {e}")
             return False
@@ -423,36 +424,26 @@ class LidarrService(MusicServiceBase):
                 "performance": self.operation_stats
             }
     
-    def album_exists(self, mbid: str, added_albums: set) -> bool:
-        """
-        Verifica se un album esiste già in Lidarr
-        Compatibile con la logica HP originale
-        """
-        if mbid in added_albums:
-            return True
-            
-        try:
-            # Cerca in tutti gli album di Lidarr
-            artists = self._lidarr_request("GET", "artist")
-            if not artists:
-                return False
-                
-            for artist in artists:
+    def _get_known_album_mbids(self) -> set:
+        """Return the set of all foreignAlbumIds in the library, fetching once per run."""
+        if self._known_album_mbids is None:
+            self._known_album_mbids = set()
+            for artist in self._get_artist_list():
                 albums = self._lidarr_request("GET", "album", params={"artistId": artist["id"]})
                 if albums:
                     for album in albums:
-                        if album.get("foreignAlbumId") == mbid:
-                            if self.config.get("DEBUG_PRINT", False):
-                                print(f"[DEBUG] Album {mbid} trovato in Lidarr")
-                            return True
-            
-            if self.config.get("DEBUG_PRINT", False):
-                print(f"[DEBUG] Album {mbid} non trovato in Lidarr")
-            return False
-            
-        except Exception as e:
-            log.error(f"Lidarr album_exists failed for {mbid}: {e}")
-            return False
+                        fid = album.get("foreignAlbumId")
+                        lid = album.get("id")
+                        if fid:
+                            self._known_album_mbids.add(fid)
+                        if fid and lid:
+                            self._lidarr_album_id[fid] = lid
+            log.debug(f"Album MBID cache populated ({len(self._known_album_mbids)} albums)")
+        return self._known_album_mbids
+
+    def album_exists(self, mbid: str, added_albums: set) -> bool:
+        """Check whether an album is already in the Lidarr library."""
+        return mbid in added_albums or mbid in self._get_known_album_mbids()
     
     @classmethod
     def get_config_requirements(cls) -> Dict[str, Any]:
