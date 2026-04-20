@@ -24,16 +24,8 @@
   <DonateLink/>
   <Requires/>
 
-  <!-- Config file -->
-  <Config Name="Config file" Target="/app/config.py" Default="/mnt/user/appdata/genrediscovery/config.py"
-          Mode="ro" Description="Path to your config.py (copy from config.example.py)" Type="Path" Display="always" Required="true" Mask="false"/>
-
-  <!-- Persistent cache -->
-  <Config Name="Cache file" Target="/app/lastfm_similar_cache.json" Default="/mnt/user/appdata/genrediscovery/lastfm_similar_cache.json"
-          Mode="rw" Description="Persistent cache to avoid re-adding albums" Type="Path" Display="always" Required="true" Mask="false"/>
-
-  <!-- Logs -->
-  <Config Name="Log directory" Target="/app/log" Default="/mnt/user/appdata/genrediscovery/log"
-          Mode="rw" Description="Directory for discover.log and dry_run.log" Type="Path" Display="always" Required="true" Mask="false"/>
+  <!-- User data directory: place config.py here before first start -->
+  <Config Name="AppData" Target="/config" Default="/mnt/user/appdata/genrediscovery"
+          Mode="rw" Description="Directory containing config.py, cache file and logs. Copy config.example.py to config.py here before starting." Type="Path" Display="always" Required="true" Mask="false"/>
 
 </Container>

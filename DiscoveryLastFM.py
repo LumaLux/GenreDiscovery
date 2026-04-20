@@ -13,6 +13,14 @@ DiscoveryLastFM.py · v2.2.0 (GenreDiscovery fork)
 – [NEW v2.2] Navidrome/Subsonic integration (optional)
 """
 
+import sys
+from pathlib import Path
+
+# When running in Docker, /config holds user data (config.py, cache, logs)
+_CONFIG_DIR = Path("/config")
+if _CONFIG_DIR.exists():
+    sys.path.insert(0, str(_CONFIG_DIR))
+
 # ─────────────────── CONFIG ───────────────────
 try:
     from config import *
@@ -113,11 +121,12 @@ from sources import (
 )
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-CACHE_FILE = SCRIPT_DIR / "lastfm_similar_cache.json"
-LOG_DIR = SCRIPT_DIR / "log"
+_DATA_DIR = _CONFIG_DIR if _CONFIG_DIR.exists() else SCRIPT_DIR
+CACHE_FILE = _DATA_DIR / "lastfm_similar_cache.json"
+LOG_DIR = _DATA_DIR / "log"
 LOG_FILE = LOG_DIR / "discover.log"
 DRY_RUN_LOG_FILE = LOG_DIR / "dry_run.log"
-TRIGGER_FILE = SCRIPT_DIR / "trigger.run"
+TRIGGER_FILE = _DATA_DIR / "trigger.run"
 
 # ─────────────────── LOGGER ───────────────────
 LOG_DIR.mkdir(exist_ok=True)
