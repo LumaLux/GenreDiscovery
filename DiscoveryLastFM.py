@@ -66,6 +66,8 @@ if 'LOVED_TRACKS_ENABLED' not in globals():
     LOVED_TRACKS_ENABLED = True
 if 'LOVED_TRACKS_LIMIT' not in globals():
     LOVED_TRACKS_LIMIT = 500
+if 'LOVED_STUDIO_ONLY' not in globals():
+    LOVED_STUDIO_ONLY = True
 
 # ── Navidrome defaults ──
 if 'NAVIDROME_ENABLED' not in globals():
@@ -370,6 +372,17 @@ def is_studio_rg(rg_id):
     return True
 
 
+def search_release_group_mbid(artist_name, album_title):
+    """Search MusicBrainz for a release group by artist + album title. Returns rg_id or None."""
+    a = artist_name.replace('"', '\\"')
+    t = album_title.replace('"', '\\"')
+    js = mbz_request("release-group", query=f'artist:"{a}" AND releasegroup:"{t}"', limit=1)
+    if not js:
+        return None
+    results = js.get("release-groups", [])
+    return results[0].get("id") if results else None
+
+
 def release_group_info(rel_id):
     """Return (rg_id, is_studio) from a single MBZ request instead of two.
 
@@ -603,15 +616,27 @@ def phase_loved_tracks(music_service):
             rel_id = album.get("mbid", "")
             title = album.get("title", "")
             if not rel_id:
-                log.debug(f"[loved] No album MBID for '{track_name}' by {artist_name} — skipping")
-                continue
-
-            rg_id, studio = release_group_info(rel_id)
-            if not rg_id:
-                log.debug(f"[loved] Could not resolve release group for '{title}' — skipping")
-                continue
-
-            mbid_to_add = rg_id if studio is not False else rel_id
+                if not title:
+                    log.debug(f"[loved] No album info for '{track_name}' by {artist_name} — skipping")
+                    continue
+                rg_id = search_release_group_mbid(artist_name, title)
+                if not rg_id:
+                    log.debug(f"[loved] No MBz match for album '{title}' by {artist_name} — skipping")
+                    continue
+                studio = is_studio_rg(rg_id)
+                if LOVED_STUDIO_ONLY and not studio:
+                    log.debug(f"[loved] '{title}' by {artist_name} is not a studio album — skipping")
+                    continue
+                mbid_to_add = rg_id
+            else:
+                rg_id, studio = release_group_info(rel_id)
+                if not rg_id:
+                    log.debug(f"[loved] Could not resolve release group for '{title}' — skipping")
+                    continue
+                if LOVED_STUDIO_ONLY and studio is False:
+                    log.debug(f"[loved] '{title}' by {artist_name} is not a studio album — skipping")
+                    continue
+                mbid_to_add = rg_id
             if mbid_to_add in added_albums_loved or music_service.album_exists(mbid_to_add, set()):
                 log.debug(f"[loved] Album '{title}' already queued — skipping")
                 continue
