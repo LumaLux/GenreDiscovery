@@ -275,22 +275,6 @@ Set `DEBUG_PRINT = True` in `config.py` for verbose API call logging.
 
 ---
 
-## 😊 User Reviews
-
-> *"I for one am happy to wake up on my Sunday to this new music discovery tool."*
-> **— Shark7809**
-
-> *"This is something I've been looking for actually."*
-> **— AlteRedditor**
-
-> *"I'm excited to try this. I've already pulled in a few recommendations and can't wait to let the script keep running to see what else it uncovers."*
-> **— mush0uth2**
-
-> *"This is incredible! I'm in the middle of setting things up and was wandering if such thing existed, you made my day!!"*
-> **— williewaller**
-
----
-
 ## 🙏 Acknowledgments
 
 - [Last.fm](https://www.last.fm/) for the music discovery API
@@ -298,7 +282,7 @@ Set `DEBUG_PRINT = True` in `config.py` for verbose API call logging.
 - [Navidrome](https://www.navidrome.org/) for the Subsonic-compatible streaming server
 - [Lidarr](https://github.com/Lidarr/Lidarr) for modern music library management
 - [Headphones](https://github.com/rembo10/headphones) for automated music management
-- Original concept and development by [Matteo Rancilio](https://www.linkedin.com/in/matteorancilio/)
+- Original concept and development by [Matteo Rancilio](https://www.linkedin.com/in/matteorancilio/), functionality expanded by [Jasper Folkers](https://www.linkedin.com/in/jasper-folkers-5bb77847/)
 
 ---
 
